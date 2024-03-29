@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "OSMSystem": {
+      "commandName": "Project",
+      "commandLineArgs": "\"c:/temp/map\" \"north-america\" \"DefaultEndpointsProtocol=https;AccountName=osmmirror;AccountKey=zLkUmlOAWqpemy/x4PdlzlxFU24nfpjUsL8Rmc5qs3lSZLQKG9I1lFwi3R3ofsx+rlmnENkpVBrTAi5noUCobQ==;EndpointSuffix=core.windows.net\""
+    }
+  }
+}
