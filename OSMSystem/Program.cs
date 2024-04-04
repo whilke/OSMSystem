@@ -17,7 +17,7 @@ namespace OSMSystem
         private static string osmPath = "/tmp";
         private static string downloadUrl = "https://download.geofabrik.de/north-america/us/{0}";
         private static string stateList =
-            "['California', 'Alaska', 'Alabama', 'Arkansas', 'Arizona', 'Colorado', 'Connecticut', 'District of Columbia', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Iowa', 'Idaho', 'Illinois', 'Indiana', 'Kansas', 'Kentucky', 'Louisiana', 'Massachusetts', 'Maryland', 'Maine', 'Michigan', 'Minnesota', 'Missouri', 'Mississippi', 'Montana', 'North Carolina', 'North Dakota', 'Nebraska', 'New Hampshire', 'New Jersey', 'New Mexico', 'Nevada', 'New York', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Virginia', 'Vermont', 'Washington', 'Wisconsin', 'West Virginia', 'Wyoming']";
+            "['California','Arizona','Alaska', 'Alabama', 'Arkansas', 'Colorado', 'Connecticut', 'District of Columbia', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Iowa', 'Idaho', 'Illinois', 'Indiana', 'Kansas', 'Kentucky', 'Louisiana', 'Massachusetts', 'Maryland', 'Maine', 'Michigan', 'Minnesota', 'Missouri', 'Mississippi', 'Montana', 'North Carolina', 'North Dakota', 'Nebraska', 'New Hampshire', 'New Jersey', 'New Mexico', 'Nevada', 'New York', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Virginia', 'Vermont', 'Washington', 'Wisconsin', 'West Virginia', 'Wyoming']";
         static void Main(string[] args)
         {
             osmPath = args[0];
@@ -67,7 +67,7 @@ namespace OSMSystem
                         DateTimeOffset  utcNow       = DateTimeOffset.UtcNow;
                         DateTimeOffset? lastModified = blockBlobReference.Properties.LastModified;
                         TimeSpan?       diff         = lastModified.HasValue ? new TimeSpan?(utcNow - lastModified.Value) : new TimeSpan?();
-                        if ((diff.HasValue ? (diff.Value.TotalDays < 2.0 ? 1 : 0) : 0) != 0)
+                        if ((diff.HasValue ? (diff.Value.TotalDays < 1.0 ? 1 : 0) : 0) != 0)
                         {
                             Console.WriteLine("routerFile is too recent, skipping");
                             continue;
@@ -99,7 +99,7 @@ namespace OSMSystem
                     {
                         LoadSettings settings = new LoadSettings
                         {
-                            AllCore = true
+                            AllCore = true,
                         };
 
                         Console.WriteLine("Loading OSM..." + osmFilter);
@@ -127,6 +127,7 @@ namespace OSMSystem
                     }
                 }
 
+                
                 if (!File.Exists(Path.Combine(osmPath, osm)))
                 {
                     File.Delete(Path.Combine(osmPath, osm));
