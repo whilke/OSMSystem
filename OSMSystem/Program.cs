@@ -8,6 +8,7 @@ using Itinero.IO.Osm;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
+using OsmSharp.API;
 
 namespace OSMSystem
 {
@@ -20,6 +21,9 @@ namespace OSMSystem
             "['California','Arizona','Alaska', 'Alabama', 'Arkansas', 'Colorado', 'Connecticut', 'District of Columbia', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Iowa', 'Idaho', 'Illinois', 'Indiana', 'Kansas', 'Kentucky', 'Louisiana', 'Massachusetts', 'Maryland', 'Maine', 'Michigan', 'Minnesota', 'Missouri', 'Mississippi', 'Montana', 'North Carolina', 'North Dakota', 'Nebraska', 'New Hampshire', 'New Jersey', 'New Mexico', 'Nevada', 'New York', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Virginia', 'Vermont', 'Washington', 'Wisconsin', 'West Virginia', 'Wyoming']";
         static void Main(string[] args)
         {
+
+            bool oneFileMode = args.Length >= 4;
+
             osmPath = args[0];
             string cs = args[2];
             string container = args[1];
@@ -29,8 +33,73 @@ namespace OSMSystem
             cont.CreateIfNotExists();
 
             List<string> states = JsonConvert.DeserializeObject<List<string>>(stateList);
-
             WebClient client = new WebClient();
+
+            if (oneFileMode)
+            {
+                string oneFile = args[3];
+                var osmFile = Path.Combine(osmPath, oneFile);
+                if (!File.Exists(osmFile))
+                {
+                    Console.WriteLine($"Downloading {oneFile}");
+                    client.DownloadFile($" https://download.geofabrik.de/north-america/{oneFile}", osmFile);
+                }
+
+                var osm = oneFile;
+                var state = oneFile.ToLower().Replace("osm.pbf", "");
+                var osmFilter = $"{state}.osm.filter.pbf";
+                var routerdb = $"{state}.routerdb";
+                if (!File.Exists(Path.Combine(osmPath, osmFilter)))
+                {
+                    Console.WriteLine("Filtering..." + osm);
+                    var dockerArgs = $"tags-filter {Path.Combine(osmPath, osm)} w/highway w/junction w/barrier -o {Path.Combine(osmPath, osmFilter)}";
+                    var p = Process.Start("osmium", dockerArgs);
+                    p.WaitForExit();
+
+                    //upload to blob
+                    Console.WriteLine("Uploading " + osmFilter);
+                    var blob = cont.GetBlockBlobReference(osm);
+                    blob.UploadFromFile(Path.Combine(osmPath, osmFilter));
+                }
+
+                if (!File.Exists(Path.Combine(osmPath, routerdb)))
+                {
+                    try
+                    {
+                        LoadSettings settings = new LoadSettings
+                        {
+                            AllCore = true,
+                        };
+
+                        Console.WriteLine("Loading OSM..." + osmFilter);
+                        Stopwatch sw = Stopwatch.StartNew();
+                        RouterDb db = new RouterDb();
+                        using var fileStream = File.OpenRead(Path.Combine(osmPath, osmFilter));
+                        db.LoadOsmData(fileStream, settings, Itinero.Osm.Vehicles.Vehicle.Car);
+                        Console.WriteLine("OSM loaded in..." + sw.Elapsed);
+                        sw = Stopwatch.StartNew();
+                        Console.WriteLine("Contracting..." + routerdb);
+                        db.AddContracted(Itinero.Osm.Vehicles.Vehicle.Car.Fastest());
+                        Console.WriteLine("Contracted in..." + sw.Elapsed);
+                        Console.WriteLine("Uploading routerDB..." + routerdb);
+                        fileStream.Dispose();
+
+                        using var fileStreamDb = File.OpenWrite(Path.Combine(osmPath, routerdb));
+                        db.Serialize(fileStreamDb, true);
+                        fileStreamDb.Close();
+                        fileStreamDb.Dispose();
+                        cont.GetBlockBlobReference(routerdb).UploadFromFile(Path.Combine(osmPath, routerdb));
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error in RouterDB..." + e.ToString());
+                    }
+                }
+
+
+                return;
+
+            }
 
             var naFile = Path.Combine(osmPath, "north-america-latest.osm.pbf");
             if (!File.Exists(naFile))
